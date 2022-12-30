@@ -8,12 +8,12 @@ function RHF_core_guess(ints::IntegralHelper)
     output("Using Core Guess")
     S = ints["S"]
     Λ = S^(-1/2)
+
     F = ints["T"] + ints["V"]
+    why, tho = LinearAlgebra.eigen(Symmetric(F), sortby=x->x)
     Ft = Λ*F*Λ'
-
     # Get orbital energies and transformed coefficients
-    _, Ct = LinearAlgebra.eigen(Symmetric(Ft), sortby=x->x)
-
+    en, Ct = LinearAlgebra.eigen(Symmetric(Ft), sortby=x->x)
     # Reverse transformation to get MO coefficients
     C = Λ*Ct
 
@@ -64,6 +64,8 @@ end
 Compute RHF energy given a density matrix `D`, Core Hamiltonian `H` and Fock matrix `F`.
 """
 function RHFEnergy(D::Array{Float64}, H::Array{Float64}, F::Array{Float64})
+    #println("Check the fock")
+    #display(F)
     return sum(D .* (H .+ F))
 end
 
@@ -95,12 +97,12 @@ end
 function build_fock!(F::Array{Float64}, H::Array{Float64}, D::Array{Float64}, ints::IntegralHelper{Float64,SparseERI,AtomicOrbitals})
     D = D
     F .= H
+    evals, evecs = eigen(F)
     eri_vals = ints["ERI"].data
     idxs = ints["ERI"].indexes
 
     nbas = ints.orbitals.basisset.nbas
     Farrays = [zeros(nbas, nbas) for i = 1:Threads.nthreads()]
-
     Threads.@threads for z = eachindex(eri_vals)
     @inbounds @fastmath begin
         i,j,k,l = idxs[z] .+ 1

@@ -6,6 +6,7 @@ Module for running Hartree--Fock computations in Fermi.
 # Methods
 
     > Fermi.HartreeFock.RHF
+    > Fermi.HartreeFock.SRHF
     > Fermi.HartreeFock.UHF
 """
 module HartreeFock
@@ -21,6 +22,14 @@ function hf_header()
     output("|{:33}{:^12}{:33}|", "", "Hartree-Fock", "")
     output("|{:34}{:^9}{:34}|", "", "Module  by","")
     output("|{:25}{:^28}{:25}|", "", "G.J.R Aroeira and M.M. Davis", "")
+    output(repeat("=",80))
+end
+
+function srhf_header()
+    output(repeat("=",80))
+    output("|{:27}{:^24}{:27}|", "", "Symmetrized Hartree-Fock", "")
+    output("|{:34}{:^9}{:34}|", "", "Module  by","")
+    output("|{:19}{:^40}{:19}|", "", "Nathaniel Kitzmiller and Stephen Goodlett", "")
     output(repeat("=",80))
 end
 
@@ -46,6 +55,9 @@ abstract type AbstractHFWavefunction <: Fermi.AbstractWavefunction end
 # Different Hartree-Fock methods are included here:
 # Restricted Hartree--Fock
 include("RHF/RHF.jl")
+
+# Symmetrized Restricted Hartree--Fock
+include("SRHF/SRHF.jl")
 
 # UHF
 include("UHF/UHF.jl")

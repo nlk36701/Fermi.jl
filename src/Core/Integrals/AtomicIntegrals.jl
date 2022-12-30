@@ -15,17 +15,20 @@ end
 
 function compute_S!(I::IntegralHelper{T, E, AtomicOrbitals}) where {T<:AbstractFloat, E<:AbstractERI}
     bs = I.orbitals.basisset
-    I.cache["S"] = overlap(bs, T)
+    #I.cache["S"] = overlap(bs, T)
+    I.cache["S"] = overlap(bs)
 end
 
 function compute_T!(I::IntegralHelper{T, E, AtomicOrbitals}) where {T<:AbstractFloat, E<:AbstractERI}
     bs = I.orbitals.basisset
-    I.cache["T"] = kinetic(bs, T)
+    #I.cache["T"] = kinetic(bs, T)
+    I.cache["T"] = kinetic(bs)
 end
 
 function compute_V!(I::IntegralHelper{T, E, AtomicOrbitals}) where {T<:AbstractFloat, E<:AbstractERI}
     bs = I.orbitals.basisset
-    I.cache["V"] = nuclear(bs, T)
+    #I.cache["V"] = nuclear(bs, T)
+    I.cache["V"] = nuclear(bs)
 end
 
 function compute_ERI!(I::IntegralHelper{T, E, AtomicOrbitals}) where {T<:AbstractFloat, E<:AbstractDFERI}
@@ -42,10 +45,12 @@ end
 
 function compute_ERI!(I::IntegralHelper{T, Chonky, AtomicOrbitals}) where T<:AbstractFloat
     bs = I.orbitals.basisset
-    I.cache["ERI"] = ERI_2e4c(bs, T)
+    #I.cache["ERI"] = ERI_2e4c(bs, T)
+    I.cache["ERI"] = ERI_2e4c(bs)
 end
 
 function compute_ERI!(I::IntegralHelper{T, SparseERI, AtomicOrbitals}) where T<:AbstractFloat
     bs = I.orbitals.basisset
-    I.cache["ERI"] = Fermi.FermiSparse(sparseERI_2e4c(bs, T)...)
+    #I.cache["ERI"] = Fermi.FermiSparse(sparseERI_2e4c(bs, T)...)
+    I.cache["ERI"] = Fermi.FermiSparse(sparseERI_2e4c(bs)...)
 end

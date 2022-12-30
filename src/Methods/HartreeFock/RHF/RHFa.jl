@@ -7,6 +7,7 @@ end
 
 function RHF(mol::Molecule, Alg::A) where A <: RHFAlgorithm
     RHF(IntegralHelper{Float64}(molecule=mol), Alg)
+    output("Is this it?")
 end
 
 function RHF(ints::IntegralHelper{Float64}, Alg::A) where A <: RHFAlgorithm
@@ -21,7 +22,6 @@ function RHF(ints::IntegralHelper{Float64}, Alg::A) where A <: RHFAlgorithm
         ints["ERI"]
     end
     output("Done in {:10.5f} s", t)
-
     guess = Options.get("scf_guess")
     if guess == "core"
         C, Λ = RHF_core_guess(ints)
@@ -117,6 +117,9 @@ function RHF(ints::IntegralHelper{Float64, <:AbstractERI, AtomicOrbitals}, C::Ab
     # Form the density matrix from occupied subset of guess coeffs
     Co = C[:, 1:ndocc]
     @tensor D[u,v] := Co[u,m]*Co[v,m]
+    #evals, evecs = eigen(D)
+    evalsd, evecsd = LinearAlgebra.eigen(Symmetric(D), sortby=x->x)
+    println("Evals of occupied Density $evalsd")
     D_old = deepcopy(D)
     eps = zeros(Float64,ndocc+nvir)
 
@@ -148,6 +151,8 @@ function RHF(ints::IntegralHelper{Float64, <:AbstractERI, AtomicOrbitals}, C::Ab
 
             # Build the Fock Matrix
             build_fock!(F, T + V, D, ints)
+            
+            evals, evecs = eigen(F)
             Eelec = RHFEnergy(D, T + V, F)
 
             # Compute Energy
@@ -164,19 +169,20 @@ function RHF(ints::IntegralHelper{Float64, <:AbstractERI, AtomicOrbitals}, C::Ab
             damp = 0.0
             # Use ODA damping?
             if oda && Drms > oda_cutoff && ite < oda_shutoff
-                diis = false
-                dD = D - D̃
-                s = tr(F̃ * dD)
-                c = tr((F - F̃) * (dD))
-                if c <= -s/(2*c)
-                    λ = 1.0
-                else
-                    λ = -s/(2*c)
-                end
-                F̃ .= (1-λ)*F̃ + λ*F
-                D̃ .= (1-λ)*D̃ + λ*D
-                damp = 1-λ
-                F .= F̃
+                #println("lmao hide this shit for now")
+                #diis = false
+                #dD = D - D̃
+                #s = tr(F̃ * dD)
+                #c = tr((F - F̃) * (dD))
+                #if c <= -s/(2*c)
+                #    λ = 1.0
+                #else
+                #    λ = -s/(2*c)
+                #end
+                #F̃ .= (1-λ)*F̃ + λ*F
+                #D̃ .= (1-λ)*D̃ + λ*D
+                #damp = 1-λ
+                #F .= F̃
             
             # Or Use DIIS?
             elseif do_diis && ite > diis_start
@@ -193,7 +199,7 @@ function RHF(ints::IntegralHelper{Float64, <:AbstractERI, AtomicOrbitals}, C::Ab
             E = Enew
             D_old .= D
         end
-        output("    {:<3} {:>15.10f} {:>11.3e} {:>11.3e} {:>8.2f} {:>8}    {:5.2f}", ite, E, ΔE, Drms, t_iter, diis, damp)
+        output("    {:<3} {:>15.10f} {:>11.3e} {:>11.3e} {:>8.4f} {:>8}    {:5.2f}", ite, E, ΔE, Drms, t_iter, diis, damp)
         ite += 1
 
         if (abs(ΔE) < Etol) & (Drms < Dtol) & (ite > 5)
@@ -203,7 +209,7 @@ function RHF(ints::IntegralHelper{Float64, <:AbstractERI, AtomicOrbitals}, C::Ab
     end
 
     output(repeat("-",80))
-    output("    RHF done in {:>5.2f}s", t)
+    output("    RHF done in {:>5.4f}s", t)
     output("    @Final RHF Energy     {:>20.12f} Eₕ", E)
     output("\n   • Orbitals Summary",)
     output("\n {:>10}   {:>15}   {:>10}", "Orbital", "Energy", "Occupancy")

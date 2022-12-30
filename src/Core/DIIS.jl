@@ -91,7 +91,7 @@ function extrapolate(M::DIISManager{T1,T2}; add_res=false) where {T1 <: Abstract
     if add_res
         out += sum(ci[1:end-1] .* M.errs)
     end
-
+    #println("IS this all for nothing? $out")
     return out
 end
 end #module

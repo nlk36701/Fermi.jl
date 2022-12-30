@@ -2,6 +2,7 @@ export @energy
 
 energy_dict = Dict{String, String}(
     "rhf" => "Fermi.HartreeFock.RHF()",
+    "srhf" => "Fermi.HartreeFock.SRHF()",
     "uhf" => "Fermi.HartreeFock.UHF()",
     "mp2" => "Fermi.MollerPlesset.RMP2()",
     "rmp2" => "Fermi.MollerPlesset.RMP2()",

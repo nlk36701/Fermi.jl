@@ -245,11 +245,15 @@ function compute_OVOV!(I::IntegralHelper{T,Chonky,<:AbstractRestrictedOrbitals},
     o = (1+core):ndocc
     v = (ndocc+1):(nbf - inac)
     Cv = I.orbitals.C[:,v]
+    println("Cv")
+    println(Cv)
     Co = I.orbitals.C[:,o]
     if eltype(I.orbitals.C) !== T
         Cv = T.(Cv)
         Co = T.(Co)
     end
+    println("Cv")
+    println(Cv)
 
     # Create a partially-contracted dense array from SparseERI
     iνρσ = zeros(T, length(o), nbf, nbf, nbf)

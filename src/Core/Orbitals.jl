@@ -6,6 +6,7 @@ using GaussianBasis
 export AbstractOrbitals, AtomicOrbitals, AbstractRestrictedOrbitals, AbstractUnrestrictedOrbitals
 export GeneralRestrictedOrbitals
 export RHFOrbitals
+export SRHFOrbitals
 export UHFOrbitals
 
 """
@@ -84,6 +85,14 @@ Struct holding information about Restricted Hartree--Fock orbitals
     C          Coefficients of the AO->MO transformation matrix
 """
 struct RHFOrbitals <: AbstractRestrictedOrbitals
+    molecule::Molecule
+    basis::String
+    eps::AbstractArray{Float64,1}
+    sd_energy::Float64
+    C::AbstractArray{Float64,2}
+end
+
+struct SRHFOrbitals <: AbstractRestrictedOrbitals
     molecule::Molecule
     basis::String
     eps::AbstractArray{Float64,1}

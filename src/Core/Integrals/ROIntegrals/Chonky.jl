@@ -81,6 +81,8 @@ function compute_OVOV!(I::IntegralHelper{T,Chonky,O}, aoints::IntegralHelper{T,C
     v = (ndocc+1):(nbf - inac)
     Cv = I.orbitals.C[:,v]
     Co = I.orbitals.C[:,o]
+    println("CV")
+    println(Cv)
     if eltype(I.orbitals.C) !== T
         Cv = T.(Cv)
         Co = T.(Co)
