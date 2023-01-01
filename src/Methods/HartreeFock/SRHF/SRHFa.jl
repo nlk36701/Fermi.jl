@@ -1,6 +1,5 @@
 using GaussianBasis
 using Printf
-using ProfileView
 
 function SRHF(Alg::A) where A <: SRHFAlgorithm
     ints = IntegralHelper{Float64}(eri_type = Chonky())
@@ -199,6 +198,9 @@ end
 
 #Create antisymmetrizer, initiate Fock
 function anti_symmetrize(S, Tint, V, ndocc, symtext)
+    
+    #AAA = normalize_antisymmetrize(S)
+    #println("AAA $AAA")
     AA = []
     C = []
     CT = []
@@ -401,25 +403,25 @@ function actual_SRHF(mol, basis_string)
 
     #for symmetry, initialize a diis manager for each irrep?
     #dm object in diis_set for irreps that have a subspace of rank 0 is just [] placeholder
-    if do_diis
-        diis_set = []
-        for Gamma in irreplength
-            if Gamma <= 1
-                push!(diis_set, [])
-            else
-                DM = Fermi.DIIS.DIISManager{Float64,Float64}(size=Options.get("ndiis"))
-                push!(diis_set, DM)
-                #diis_start = Options.get("diis_start")
-                #println("diis_start")
-                #println(diis_start)
-            end
-        end
-    end
-    diis_start = Options.get("diis_start")
     #if do_diis
-    #    DM = Fermi.DIIS.DIISManager{Float64,Float64}(size=Options.get("ndiis"))
-    #    diis_start = Options.get("diis_start")
+    #    diis_set = []
+    #    for Gamma in irreplength
+    #        if Gamma == 0
+    #            push!(diis_set, [])
+    #        else
+    #            DM = Fermi.DIIS.DIISManager{Float64,Float64}(size=Options.get("ndiis"))
+    #            push!(diis_set, DM)
+    #            #diis_start = Options.get("diis_start")
+    #            #println("diis_start")
+    #            #println(diis_start)
+    #        end
+    #    end
     #end
+    diis_start = Options.get("diis_start")
+    if do_diis
+        DM = Fermi.DIIS.DIISManager{Float64,Float64}(size=Options.get("ndiis"))
+        diis_start = Options.get("diis_start")
+    end
     
     #compute nvir and nao based on irrep
 
@@ -464,6 +466,7 @@ function actual_SRHF(mol, basis_string)
             # Get orbital energies and transformed coefficients
             # Reverse transformation to get MO coefficients
             Ft, Ct, Et = backt(smallF, AA)
+            #println("Ft $Ft")
             otherF = smallFock(irreplength)
             # Produce new Density Matrix
             doccdict, doccirrep, sorted_e = orderenergy(Ct, Et, ndocc) 
@@ -482,38 +485,52 @@ function actual_SRHF(mol, basis_string)
             ## Store vectors for DIIS
             ###
             #println("This dim mismatch?") 
-            #aaa = full_mat(AA)
-            #SSS = full_mat(Soverlap)
+            aaa = full_mat(AA)
+            SSS = full_mat(Soverlap)
+            FFF = full_mat(smallF)
+            DDD = full_mat(smallD)
+
+            if do_diis
+                err = transpose(aaa)*(FFF*DDD*SSS - SSS*DDD*FFF)*aaa
+                push!(DM, FFF, err)
+            end
             #######################################################
             
             #No dm object in diis_set for irreps that have a subspace of rank 1 or less?
-            if do_diis
-                for (i, dm) in enumerate(diis_set)
-                    if irreplength[i] <= 1
-                        continue
-                        #println("Again, no dice!")
-                    else
-                        Gamma_err =ΓDice(AA, smallF, smallD, Soverlap)
-                        push!(dm, smallF[i], Gamma_err[i])
-                    end
-                end
-            end
-            do_diis = false
+            #if do_diis
+            #    for (i, dm) in enumerate(diis_set)
+            #        if irreplength[i] == 0
+            #            continue
+            #            #println("Again, no dice!")
+            #        else
+            #            Gamma_err =ΓDice(AA, smallF, smallD, Soverlap)
+            #            push!(dm, smallF[i], Gamma_err[i])
+            #        end
+            #    end
+            #end
+            #do_diis = false
             if do_diis && ite > diis_start
-                newF = []
                 diis = true
-                for (x, i) in enumerate(irreplength)
-                    if i == 0
-                        push!(newF, [])
-                    elseif i == 1
-                        push!(newF, smallF[x])
-                    else
-                        smallfock = Fermi.DIIS.extrapolate(diis_set[x])
-                        push!(newF, smallfock)
-                    end
-                end
-                smallF = newF
+                F = Fermi.DIIS.extrapolate(DM)
+                smallF = bd_from_full(F, irreplength) 
             end
+            #if do_diis && ite > diis_start
+            #    newF = []
+            #    diis = true
+            #    for (x, i) in enumerate(irreplength)
+            #        #println("This is i $i and x $x")
+            #        if i == 0
+            #            push!(newF, [])
+            #        elseif i == 1
+            #            push!(newF, smallF[x])
+            #        else
+            #            #println("Is it here?")
+            #            smallfock = Fermi.DIIS.extrapolate(diis_set[x])
+            #            push!(newF, smallfock)
+            #        end
+            #    end
+            #    smallF = newF
+            #end
             
             ###
             # Branch for ODA vs DIIS convergence aids
@@ -709,11 +726,11 @@ end
 
 function ΓDice(AA, smallF, smallD, Soverlap)
     err = []
-    for Γ in 1:length(AA)
-        if length(AA[Γ]) == 0
+    for g in 1:length(AA)
+        if length(AA[g]) == 0
             push!(err, 0)
         else
-            error = transpose(AA[Γ])*(smallF[Γ]*smallD[Γ]*Soverlap[Γ] - Soverlap[Γ]*smallD[Γ]*smallF[Γ])*AA[Γ]
+            error = transpose(AA[g])*(smallF[g]*smallD[g]*Soverlap[g] - Soverlap[g]*smallD[g]*smallF[g])*(AA[g])
             push!(err, error)
         end
     end
