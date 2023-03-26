@@ -29,7 +29,7 @@ function srhf_header()
     output(repeat("=",80))
     output("|{:27}{:^24}{:27}|", "", "Symmetrized Hartree-Fock", "")
     output("|{:34}{:^9}{:34}|", "", "Module  by","")
-    output("|{:19}{:^40}{:19}|", "", "Nathaniel Kitzmiller and Stephen Goodlett", "")
+    output("|{:19}{:^40}{:18}|", "", "Nathaniel Kitzmiller and Stephen Goodlett", "")
     output(repeat("=",80))
 end
 

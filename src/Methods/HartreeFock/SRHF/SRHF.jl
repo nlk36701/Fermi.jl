@@ -108,6 +108,7 @@ end
 struct SRHFa <: SRHFAlgorithm end
 include("SRHFa.jl")
 include("SRHFHelper.jl")
+include("Pk.jl")
 # And a number is assigned to the implementation
 get_srhf_alg(x::Val{1}) = SRHFa()
 

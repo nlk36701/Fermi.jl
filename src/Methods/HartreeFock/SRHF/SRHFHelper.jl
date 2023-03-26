@@ -101,6 +101,12 @@ function newindex(i, irreplength)
     sum += Γ
     end
 end 
+
+function fastG(irreplength)
+pk_size = 0
+pk_pairs = 0
+
+end
 #build fock in subspace of irreps instead of massive fock
 function smallfock!(otherF, H, D, symsparse, symdex, nbas, so_irrep, irreplength)
     D = D

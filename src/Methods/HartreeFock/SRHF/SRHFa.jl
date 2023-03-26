@@ -125,7 +125,7 @@ function unidx(bset)
                     if idx2(i,j) < idx2(k,l)
                         continue
                     end
-                    push!(d, (i, j, k, l))
+                    push!(d, [i, j, k, l])
                 end
             end
         end
@@ -141,6 +141,10 @@ function idx2(i, j)
     else
         return (i * (i + 1)) >> 1 + j
     end
+end
+
+function index4(i,j,k,l)
+    return index2(index2(i,j), index2(k,l))
 end
 
 #reduction coefficient for TSIR 
@@ -198,7 +202,7 @@ end
 
 #Create antisymmetrizer, initiate Fock
 function anti_symmetrize(S, Tint, V, ndocc, symtext)
-    
+     
     #AAA = normalize_antisymmetrize(S)
     #println("AAA $AAA")
     AA = []
@@ -218,10 +222,20 @@ function anti_symmetrize(S, Tint, V, ndocc, symtext)
             push!(F, [])
             push!(H, [])
         else
-            a = s^(-1/2)
+            a = real(s^(-1/2))
+            #println(a)
             f = Tint[i] + V[i]
             ft = a * f * a'
+            #println(ft)
             energies, ct = LinearAlgebra.eigen((ft), sortby=x->x)
+            #energies, ct = LinearAlgebra.eigen((ft))
+            #println("energies $energies")
+            energies, ct = LinearAlgebra.eigen(Symmetric(ft), sortby=x->x)
+            #println("energies $energies")
+            #println("orbitals $ct")
+            #println("real energies $realenergies")
+            #realenergies, ct = LinearAlgebra.eigen(Hermitian(ft))
+            #println("real energies $realenergies")
             c = a*ct
             push!(AA, a)
             push!(C, c)
@@ -232,7 +246,9 @@ function anti_symmetrize(S, Tint, V, ndocc, symtext)
             push!(Energies, energies)
 
         end
+        #println("Gottem")
     end
+    #println("What the hell is going on????")
     order = sortperm(cont)
     doccirrep = doccirrep[order]
     doccirrep = doccirrep[1:ndocc]
@@ -296,11 +312,11 @@ function actual_SRHF(mol, basis_string)
     end
     output("Done in {:10.5f} s", ts)
     println("The full molecular point-group is $(symtext.pg)")
-    println("Running in $(symtext.pg) because this program is neat-o")
+    println("Running in $(symtext.pg) symmetry")
     display(symtext.ctab)
     bigboi = atom_to_string(mole)
     moles = Molecule(molstring = bigboi)
-    
+    #println("mole $mole") 
     #call the integral helper with the molecule, chonky integral, and basis string
     ints =  IntegralHelper{Float64}(molecule=moles, eri_type = Chonky(), basis = basis_string)
     
@@ -339,13 +355,20 @@ function actual_SRHF(mol, basis_string)
     @time SERI = secondaotoso_2(firsthalfSERI, bigg, bset)
     
     #BS_SERI = blocksparse_SERI(eri, bigg, irreplength, symtext)
-    
+    #println("Length!")
+    #println(length(BS_SERI)) 
     #compute nuclear repulsion
     Vnuc = Molecules.nuclear_repulsion(ints.molecule.atoms) 
     
     #grab unique integrals based on 8-fold permutational symmetry
     
     #uniqueindex = unidx(bset)
+    #println("unique index")
+    #println(uniqueindex[5]) 
+    #println(uniqueindex[5][1]) 
+    #println(uniqueindex[5][2]) 
+    #println(uniqueindex[5][3]) 
+    #println(uniqueindex[5][4]) 
     
     #need to filter out non-TSIR ERIs from sparse index
     #symdex takes uniqueindex and further filters the integrals
@@ -379,11 +402,11 @@ function actual_SRHF(mol, basis_string)
     ### 
     molecule = ints.molecule
     output(Fermi.string_repr(molecule))
-    # Grab some options
-    maxit = Options.get("scf_max_iter")
+    #maxit = Options.get("scf_max_iter") 
     maxit = 100
     Etol  = Options.get("scf_e_conv")
     Dtol  = Options.get("scf_max_rms")
+    Dtol = 1e-6
     do_diis = Options.get("diis")
     oda = Options.get("oda")
     oda_cutoff = Options.get("oda_cutoff")
@@ -403,20 +426,22 @@ function actual_SRHF(mol, basis_string)
 
     #for symmetry, initialize a diis manager for each irrep?
     #dm object in diis_set for irreps that have a subspace of rank 0 is just [] placeholder
-    #if do_diis
-    #    diis_set = []
-    #    for Gamma in irreplength
-    #        if Gamma == 0
-    #            push!(diis_set, [])
-    #        else
-    #            DM = Fermi.DIIS.DIISManager{Float64,Float64}(size=Options.get("ndiis"))
-    #            push!(diis_set, DM)
-    #            #diis_start = Options.get("diis_start")
-    #            #println("diis_start")
-    #            #println(diis_start)
-    #        end
-    #    end
-    #end
+    if do_diis
+        diis_set = []
+        for Gamma in irreplength
+            if Gamma == 0
+                push!(diis_set, [])
+            else
+                DM = Fermi.DIIS.DIISManager{Float64,Float64}(size=Options.get("ndiis"))
+                #println("DM")
+                #println(DM)
+                push!(diis_set, DM)
+                #diis_start = Options.get("diis_start")
+                #println("diis_start")
+                #println(diis_start)
+            end
+        end
+    end
     diis_start = Options.get("diis_start")
     if do_diis
         DM = Fermi.DIIS.DIISManager{Float64,Float64}(size=Options.get("ndiis"))
@@ -449,6 +474,7 @@ function actual_SRHF(mol, basis_string)
     
     otherF = smallFock(irreplength)
     smallF = chonkyfock(otherF, smallH, smallD, SERI, irreplength, symtext, so_irrep)
+    #println(smallF)
     #smallF = smallfock!(otherF, smallH, smallD, symsparse, symdex, bset.nbas, so_irrep, irreplength)
     #blocksparsefock(otherF, smallH, smallD, BS_SERI, irreplength, symtext, so_irrep)
     
@@ -479,12 +505,12 @@ function actual_SRHF(mol, basis_string)
             
             smallF = chonkyfock(otherF, smallH, smallD, SERI, irreplength, symtext, so_irrep)
             #smallF = blocksparsefock(otherF, smallH, smallD, BS_SERI, irreplength, symtext, so_irrep)
+            
             ΓEelec = rhf_energy_new(smallF, smallD, smallH) 
             # Compute Energy
             ΓEnew = ΓEelec + Vnuc
             ## Store vectors for DIIS
             ###
-            #println("This dim mismatch?") 
             aaa = full_mat(AA)
             SSS = full_mat(Soverlap)
             FFF = full_mat(smallF)
@@ -504,7 +530,11 @@ function actual_SRHF(mol, basis_string)
             #            #println("Again, no dice!")
             #        else
             #            Gamma_err =ΓDice(AA, smallF, smallD, Soverlap)
+            #            #println("Γ Error")
+            #            #println(Gamma_err)
             #            push!(dm, smallF[i], Gamma_err[i])
+            #            #println("dm $i")
+            #            #println(dm)
             #        end
             #    end
             #end
@@ -529,7 +559,9 @@ function actual_SRHF(mol, basis_string)
             #            push!(newF, smallfock)
             #        end
             #    end
-            #    smallF = newF
+            #    #println("newF")
+            #    #println(newF)
+            #    #smallF = newF
             #end
             
             ###
@@ -643,15 +675,16 @@ function blocksparse_SERI(ERI, bigg, irreplength, symtext)
                                     doit = containsTSIR_new(i,j,k,l,symtext)
                                     if doit != nothing
                                         tsir += 1
-                                        
-                                        ibigg = bigg[:, ind[i]]
-                                        jbigg = bigg[:, ind[j]]
-                                        kbigg = bigg[:, ind[k]]
-                                        lbigg = bigg[:, ind[l]]
-                                        @tensoropt SERI[I,J,K,L] :=  ERI[μ, ν, ρ, σ]*ibigg[μ, I]*jbigg[ν, J]*kbigg[ρ, K]*lbigg[σ, L]
-                                        #println(SERI)
-                                        total += length(SERI)
-                                        push!(BS_SERI, [SERI, [i, j, k, l]])
+                                        if p == q && r == s 
+                                            ibigg = bigg[:, ind[i]]
+                                            jbigg = bigg[:, ind[j]]
+                                            kbigg = bigg[:, ind[k]]
+                                            lbigg = bigg[:, ind[l]]
+                                            @tensoropt SERI[I,J,K,L] :=  ERI[μ, ν, ρ, σ]*ibigg[μ, I]*jbigg[ν, J]*kbigg[ρ, K]*lbigg[σ, L]
+                                            #println(SERI)
+                                            total += length(SERI)
+                                            push!(BS_SERI, [SERI, [i, j, k, l]])
+                                        end
                                     else
                                         nontsir += 1
                                     end
@@ -670,30 +703,41 @@ function blocksparse_SERI(ERI, bigg, irreplength, symtext)
 end
 
 function blocksparsefock(otherF, smallH, smallD, BS_SERI, irreplength, symtext, so_irrep)
+    otherF += smallH
     #loop over nonzero integral blocks
     for ay = 1:length(BS_SERI)
         index = BS_SERI[ay][2]
         seri = BS_SERI[ay][1]
         i, j, k, l = index[1], index[2], index[3], index[4]
-        ind = ERI_indicies(irreplength)
-        if i == j && k == l
-            F = otherF[i]
-            D = smallD[k]
-            I = ind[i]
-            J = ind[j]
-            K = ind[k]
-            L = ind[l]
-            
-            IJKL = seri
-            IKJL = permutedims(IJKL, (1, 3, 2, 4))
+        #ind = ERI_indicies(irreplength)
+        println("$i $j $k $l")
+        IKJL = permutedims(seri, (1, 3, 2, 4)) 
+        println("bad")
+        println(IKJL)
+        #D = smallD[k]
+        #@tensoropt first[a,b] := 2 * D[c, d] * seri[a, b, c, d]
+        #@tensoropt second[a,b] := D[c,d] * IKJL[a, c, b, d] 
+        #otherF[i] +=  first #- second
 
-            @tensoropt small[a,b] := 2 * D[c, d] * seri[a, b, c, d]
-            @tensoropt big[a,b] := IKJL[a, c, b, d] * D[c, d] 
-            
-            otherF[i] += small - big
-        end
+        #if i == j && k == l
+        #    D = smallD[k]
+        #    @tensoropt first[a,b] := 2 * D[c, d] * seri[a, b, c, d]
+        #    otherF[i] += first
+        #    #println("otherF")
+        #    #println(otherF) 
+        #elseif i == k && j == l
+        #    D = smallD[j]
+        #    #println("D, wrong")
+        #    #println(D)
+        #    #seri = permutedims(seri, (1, 3, 2, 4))
+        #    @tensoropt second[a,b] := D[c,d]* seri[a, c, b, d] 
+        #    otherF[i] -= second
+        #    #println("second")
+        #    #println(second)
+        #end
     end
-    otherF .+ smallH
+    println("WRONG")
+    println(otherF)
     return otherF 
 end
 function chonkyfock(smallF, smallH, smallD, eri, irreplength, symtext, so_irrep)
@@ -712,16 +756,26 @@ function chonkyfock(smallF, smallH, smallD, eri, irreplength, symtext, so_irrep)
                     K = ind[g]
                     L = ind[g]
                     IJKL = eri[I, J, K, L]
+                    #println(IJKL)
                     IKJL = eri[I, K, J, L]
+                    #println("good")
+                    #println("$I $J $K $L")
+                    #println(IKJL)
+                    #println(IJKL)
                     D = smallD[g]
                     @tensoropt small[a,b] := 2 * D[c, d] * IJKL[a, b, c, d]
                     @tensoropt big[a,b] := D[c, d] * IKJL[a, c, b, d]
-                    smallF[h] += small - big 
+                    smallF[h] += small - big
+                    #println("smallF")
+                    #println(smallF)
+                    #println("big")
+                    #println(big)
                 end
             end
         end
     end
     return smallF
+    #return nothing
 end
 
 function ΓDice(AA, smallF, smallD, Soverlap)

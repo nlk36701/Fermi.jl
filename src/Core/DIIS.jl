@@ -74,7 +74,6 @@ function extrapolate(M::DIISManager{T1,T2}; add_res=false) where {T1 <: Abstract
             B[n1,n2] = sum(e1 .* e2) 
         end
     end 
-
     # Create the residual vector
     resid = zeros(T1, N)
     resid[end] = one(T1) 

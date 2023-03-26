@@ -141,7 +141,7 @@ function RHF(ints::IntegralHelper{Float64, <:AbstractERI, AtomicOrbitals}, C::Ab
 
             # Get orbital energies and transformed coefficients
             eps, Ct = LinearAlgebra.eigen(Symmetric(Ft), sortby=x->x)
-            println("Et $eps")
+            #println("Et $eps")
             # Reverse transformation to get MO coefficients
             C = Λ*Ct
 
