@@ -355,20 +355,13 @@ function actual_SRHF(mol, basis_string)
     @time SERI = secondaotoso_2(firsthalfSERI, bigg, bset)
     
     #BS_SERI = blocksparse_SERI(eri, bigg, irreplength, symtext)
-    #println("Length!")
-    #println(length(BS_SERI)) 
+    
     #compute nuclear repulsion
     Vnuc = Molecules.nuclear_repulsion(ints.molecule.atoms) 
     
     #grab unique integrals based on 8-fold permutational symmetry
     
     #uniqueindex = unidx(bset)
-    #println("unique index")
-    #println(uniqueindex[5]) 
-    #println(uniqueindex[5][1]) 
-    #println(uniqueindex[5][2]) 
-    #println(uniqueindex[5][3]) 
-    #println(uniqueindex[5][4]) 
     
     #need to filter out non-TSIR ERIs from sparse index
     #symdex takes uniqueindex and further filters the integrals
@@ -402,7 +395,6 @@ function actual_SRHF(mol, basis_string)
     ### 
     molecule = ints.molecule
     output(Fermi.string_repr(molecule))
-    #maxit = Options.get("scf_max_iter") 
     maxit = 100
     Etol  = Options.get("scf_e_conv")
     Dtol  = Options.get("scf_max_rms")
@@ -433,12 +425,7 @@ function actual_SRHF(mol, basis_string)
                 push!(diis_set, [])
             else
                 DM = Fermi.DIIS.DIISManager{Float64,Float64}(size=Options.get("ndiis"))
-                #println("DM")
-                #println(DM)
                 push!(diis_set, DM)
-                #diis_start = Options.get("diis_start")
-                #println("diis_start")
-                #println(diis_start)
             end
         end
     end
@@ -469,12 +456,12 @@ function actual_SRHF(mol, basis_string)
     output(" Number of Virtual Spatial Orbitals:   {:5.0d}", nvir)
     ### 
     #construct the initial density matrix  
-    smallD = BuildD(C, doccdict) 
+    smallD = BuildD(C, doccdict)
     smallD_old = deepcopy(smallD)
     
     otherF = smallFock(irreplength)
     smallF = chonkyfock(otherF, smallH, smallD, SERI, irreplength, symtext, so_irrep)
-    #println(smallF)
+    
     #smallF = smallfock!(otherF, smallH, smallD, symsparse, symdex, bset.nbas, so_irrep, irreplength)
     #blocksparsefock(otherF, smallH, smallD, BS_SERI, irreplength, symtext, so_irrep)
     
@@ -488,11 +475,11 @@ function actual_SRHF(mol, basis_string)
     output(repeat("-",80))
     t = @elapsed while ite ≤ maxit
         t_iter = @elapsed begin
+            #println("$(Threads.nthreads())")
             # Produce Ft
             # Get orbital energies and transformed coefficients
             # Reverse transformation to get MO coefficients
             Ft, Ct, Et = backt(smallF, AA)
-            #println("Ft $Ft")
             otherF = smallFock(irreplength)
             # Produce new Density Matrix
             doccdict, doccirrep, sorted_e = orderenergy(Ct, Et, ndocc) 
@@ -696,9 +683,6 @@ function blocksparse_SERI(ERI, bigg, irreplength, symtext)
             end
         end
     end
-    println("Total length")
-    println(total)
-    println(nontsir)
     return BS_SERI
 end
 
@@ -710,10 +694,7 @@ function blocksparsefock(otherF, smallH, smallD, BS_SERI, irreplength, symtext, 
         seri = BS_SERI[ay][1]
         i, j, k, l = index[1], index[2], index[3], index[4]
         #ind = ERI_indicies(irreplength)
-        println("$i $j $k $l")
         IKJL = permutedims(seri, (1, 3, 2, 4)) 
-        println("bad")
-        println(IKJL)
         #D = smallD[k]
         #@tensoropt first[a,b] := 2 * D[c, d] * seri[a, b, c, d]
         #@tensoropt second[a,b] := D[c,d] * IKJL[a, c, b, d] 
@@ -727,17 +708,11 @@ function blocksparsefock(otherF, smallH, smallD, BS_SERI, irreplength, symtext, 
         #    #println(otherF) 
         #elseif i == k && j == l
         #    D = smallD[j]
-        #    #println("D, wrong")
-        #    #println(D)
         #    #seri = permutedims(seri, (1, 3, 2, 4))
         #    @tensoropt second[a,b] := D[c,d]* seri[a, c, b, d] 
         #    otherF[i] -= second
-        #    #println("second")
-        #    #println(second)
         #end
     end
-    println("WRONG")
-    println(otherF)
     return otherF 
 end
 function chonkyfock(smallF, smallH, smallD, eri, irreplength, symtext, so_irrep)
@@ -756,26 +731,16 @@ function chonkyfock(smallF, smallH, smallD, eri, irreplength, symtext, so_irrep)
                     K = ind[g]
                     L = ind[g]
                     IJKL = eri[I, J, K, L]
-                    #println(IJKL)
                     IKJL = eri[I, K, J, L]
-                    #println("good")
-                    #println("$I $J $K $L")
-                    #println(IKJL)
-                    #println(IJKL)
                     D = smallD[g]
                     @tensoropt small[a,b] := 2 * D[c, d] * IJKL[a, b, c, d]
                     @tensoropt big[a,b] := D[c, d] * IKJL[a, c, b, d]
                     smallF[h] += small - big
-                    #println("smallF")
-                    #println(smallF)
-                    #println("big")
-                    #println(big)
                 end
             end
         end
     end
     return smallF
-    #return nothing
 end
 
 function ΓDice(AA, smallF, smallD, Soverlap)
@@ -842,7 +807,6 @@ function BuildD(C, doccdict)
     D = []
     for (i, c) in enumerate(C)
         #check to see if there are any irreps that do not contain a set
-        #of orbitals. Not the case in cc-pvdz
         if length(c) == 0
             push!(D, [])
         else

@@ -117,9 +117,6 @@ function RHF(ints::IntegralHelper{Float64, <:AbstractERI, AtomicOrbitals}, C::Ab
     # Form the density matrix from occupied subset of guess coeffs
     Co = C[:, 1:ndocc]
     @tensor D[u,v] := Co[u,m]*Co[v,m]
-    #evals, evecs = eigen(D)
-    evalsd, evecsd = LinearAlgebra.eigen(Symmetric(D), sortby=x->x)
-    println("Evals of occupied Density $evalsd")
     D_old = deepcopy(D)
     eps = zeros(Float64,ndocc+nvir)
 
